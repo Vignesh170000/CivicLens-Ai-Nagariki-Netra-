@@ -196,3 +196,5 @@ Open your browser and navigate to:
 ## 📄 License
 This project is open-source and available under the [MIT License](LICENSE).
 Developed for the Community AI Innovation Challenge.
+#   C i v i c L e n s - A i - N a g a r i k i - N e t r a -  
+ 
