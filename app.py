@@ -22,6 +22,21 @@ app = Flask(
 )
 CORS(app)
 
+# Vercel Serverless WSGI Middleware to prevent 404 from rewrite prefixes
+class StripApiIndexMiddleware:
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        if path == '/api/index' or path == '/api/index/':
+            environ['PATH_INFO'] = '/'
+        elif path.startswith('/api/index/'):
+            environ['PATH_INFO'] = path[len('/api/index'):]
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = StripApiIndexMiddleware(app.wsgi_app)
+
 import tempfile
 IS_VERCEL = bool(os.environ.get("VERCEL"))
 if IS_VERCEL:
@@ -56,6 +71,8 @@ except Exception as e:
 # FRONTEND ROUTE
 # -------------------------------------------------------------
 @app.route("/")
+@app.route("/api/index")
+@app.route("/api/index/")
 def index():
     return render_template("index.html")
 
