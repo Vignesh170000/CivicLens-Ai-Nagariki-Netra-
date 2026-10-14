@@ -8,12 +8,35 @@ import json
 import uuid
 from datetime import datetime, timedelta
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "civiclens.db")
+import shutil
+
+import tempfile
+
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+
+if IS_VERCEL:
+    TMP_DIR = tempfile.gettempdir()
+    DB_PATH = os.path.join(TMP_DIR, "civiclens.db")
+    ORIG_DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "civiclens.db")
+    if not os.path.exists(DB_PATH) and os.path.exists(ORIG_DB):
+        try:
+            shutil.copy2(ORIG_DB, DB_PATH)
+        except Exception as e:
+            print("Failed to copy seed db to temp dir:", e)
+else:
+    DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "civiclens.db")
 
 def get_db():
     conn = sqlite3.connect(DB_PATH, timeout=30.0)
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA busy_timeout=30000;")
+    try:
+        if not IS_VERCEL:
+            conn.execute("PRAGMA journal_mode=WAL;")
+    except Exception:
+        pass
+    try:
+        conn.execute("PRAGMA busy_timeout=30000;")
+    except Exception:
+        pass
     conn.row_factory = sqlite3.Row
     return conn
 

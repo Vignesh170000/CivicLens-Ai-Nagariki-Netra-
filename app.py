@@ -14,14 +14,32 @@ import models
 import ai_engine
 import states_data
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static")
+)
 CORS(app)
 
-# Configuration
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "static", "uploads")
-SAMPLE_FOLDER = os.path.join(os.path.dirname(__file__), "static", "sample_images")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(SAMPLE_FOLDER, exist_ok=True)
+import tempfile
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+if IS_VERCEL:
+    UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), "uploads")
+else:
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
+
+SAMPLE_FOLDER = os.path.join(BASE_DIR, "static", "sample_images")
+
+try:
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+except Exception:
+    pass
+
+try:
+    os.makedirs(SAMPLE_FOLDER, exist_ok=True)
+except Exception:
+    pass
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
 
@@ -29,7 +47,10 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Initialize database on startup
-models.init_db(seed=True)
+try:
+    models.init_db(seed=True)
+except Exception as e:
+    print("Database initialization notice:", e)
 
 # -------------------------------------------------------------
 # FRONTEND ROUTE
@@ -37,6 +58,10 @@ models.init_db(seed=True)
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/static/uploads/<path:filename>")
+def serve_uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 # -------------------------------------------------------------
 # REST API ENDPOINTS
