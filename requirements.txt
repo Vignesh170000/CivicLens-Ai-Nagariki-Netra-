@@ -1,0 +1,8 @@
+# CivicLens AI (NagrikNetra) - Python Dependencies
+Flask>=3.0.0
+flask-cors>=4.0.0
+requests>=2.31.0
+pillow>=10.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+Werkzeug>=3.0.0

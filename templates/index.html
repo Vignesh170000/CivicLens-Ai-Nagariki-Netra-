@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicLens AI (NagrikNetra) | Autonomous Civic Triage & Verification</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e3a8a',
+                        accent: '#0284c7',
+                        hazard: '#dc2626',
+                        success: '#16a34a',
+                        warning: '#d97706',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Leaflet GIS Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-50 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Brand Logo & Name -->
+                <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('citizen')">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/30">
+                        <i class="fa-solid fa-eye text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-sky-400 via-indigo-200 to-emerald-400 bg-clip-text text-transparent">CivicLens AI</span>
+                            <span class="text-xs bg-slate-800 text-sky-400 px-2 py-0.5 rounded-full border border-sky-500/30 font-medium">NagrikNetra</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 font-normal">Autonomous Multimodal Grievance Triage & Verification</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="hidden md:flex space-x-1 lg:space-x-2">
+                    <button onclick="switchTab('citizen')" id="nav-citizen" class="nav-btn active-nav px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Nagrik Report</span>
+                    </button>
+                    <button onclick="switchTab('map')" id="nav-map" class="nav-btn text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                        <span>GIS Heatmap</span>
+                    </button>
+                    <button onclick="switchTab('municipal')" id="nav-municipal" class="nav-btn text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span>Command Triage</span>
+                    </button>
+                    <button onclick="switchTab('contractor')" id="nav-contractor" class="nav-btn text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>AI Verification</span>
+                    </button>
+                    <button onclick="switchTab('analytics')" id="nav-analytics" class="nav-btn text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span>Civic Health (CHI)</span>
+                    </button>
+                </nav>
+
+                <!-- System Mode Badge & Bot trigger -->
+                <div class="flex items-center space-x-3">
+                    <div id="ai-mode-badge" class="hidden sm:flex items-center space-x-1.5 text-xs bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 px-2.5 py-1 rounded-full">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span id="ai-mode-text">AI Dual-Mode Ready</span>
+                    </div>
+                    <button onclick="toggleChatModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm flex items-center space-x-1.5 transition">
+                        <i class="fa-solid fa-robot"></i>
+                        <span>Nagrik AI</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Nav Strip -->
+        <div class="md:hidden flex overflow-x-auto px-2 py-2 bg-slate-800 border-t border-slate-700 space-x-1 text-xs">
+            <button onclick="switchTab('citizen')" id="mob-citizen" class="px-2.5 py-1.5 rounded bg-sky-600 text-white whitespace-nowrap">Report</button>
+            <button onclick="switchTab('map')" id="mob-map" class="px-2.5 py-1.5 rounded text-slate-300 whitespace-nowrap">GIS Map</button>
+            <button onclick="switchTab('municipal')" id="mob-municipal" class="px-2.5 py-1.5 rounded text-slate-300 whitespace-nowrap">Triage Queue</button>
+            <button onclick="switchTab('contractor')" id="mob-contractor" class="px-2.5 py-1.5 rounded text-slate-300 whitespace-nowrap">Verify Repair</button>
+            <button onclick="switchTab('analytics')" id="mob-analytics" class="px-2.5 py-1.5 rounded text-slate-300 whitespace-nowrap">Analytics</button>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ============================================================== -->
+        <!-- TAB 1: CITIZEN REPORT PORTAL ("NAGRIK REPORT")                -->
+        <!-- ============================================================== -->
+        <section id="tab-citizen" class="tab-pane active">
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 sm:p-8 text-white mb-8 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 opacity-10 text-9xl">
+                    <i class="fa-solid fa-city"></i>
+                </div>
+                <div class="max-w-2xl relative z-10">
+                    <span class="inline-block bg-sky-500/20 text-sky-300 border border-sky-400/30 text-xs px-3 py-1 rounded-full font-semibold mb-3">
+                        Empowering Indian Neighborhoods with Vision AI
+                    </span>
+                    <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight mb-2">
+                        Snap. Diagnose. Dispatch.
+                    </h1>
+                    <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                        Don't let potholes claim lives or unmanaged garbage breed dengue. CivicLens uses Multimodal Vision AI to classify hazards, calculate severity, eliminate duplicate tickets, and route directly to ward engineers.
+                    </p>
+                </div>
+            </div>
+
+            <!-- One-Click Hackathon Demo Scenarios -->
+            <div class="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-200 mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-500 mr-2"></i>
+                        Live Demonstration Scenarios (One-Click Test)
+                    </h2>
+                    <span class="text-xs text-slate-500">Pick any real test case below to inspect live AI triage</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button onclick="loadSampleScenario('pothole')" class="scenario-card flex items-center space-x-3 p-3 rounded-lg border border-slate-200 hover:border-sky-500 hover:bg-sky-50/50 transition text-left group">
+                        <img src="/static/sample_images/pothole_before.jpg" class="w-14 h-14 rounded-lg object-cover shadow-sm group-hover:scale-105 transition" alt="Pothole">
+                        <div>
+                            <p class="text-xs font-bold text-slate-800">Bengaluru ORR Crater</p>
+                            <p class="text-[11px] text-slate-500">Severe road crater (PWD)</p>
+                            <span class="inline-block text-[10px] bg-red-100 text-red-700 px-1.5 py-0.2 rounded font-semibold mt-1">Severity 9 / P0</span>
+                        </div>
+                    </button>
+                    <button onclick="loadSampleScenario('garbage')" class="scenario-card flex items-center space-x-3 p-3 rounded-lg border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition text-left group">
+                        <img src="/static/sample_images/garbage_before.jpg" class="w-14 h-14 rounded-lg object-cover shadow-sm group-hover:scale-105 transition" alt="Garbage">
+                        <div>
+                            <p class="text-xs font-bold text-slate-800">Indiranagar Solid Waste</p>
+                            <p class="text-[11px] text-slate-500">Commercial garbage dump (SWM)</p>
+                            <span class="inline-block text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.2 rounded font-semibold mt-1">Severity 8 / P1</span>
+                        </div>
+                    </button>
+                    <button onclick="loadSampleScenario('wire')" class="scenario-card flex items-center space-x-3 p-3 rounded-lg border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition text-left group">
+                        <img src="/static/sample_images/wire_hazard_before.jpg" class="w-14 h-14 rounded-lg object-cover shadow-sm group-hover:scale-105 transition" alt="Wire">
+                        <div>
+                            <p class="text-xs font-bold text-slate-800">Koramangala Live Wire</p>
+                            <p class="text-[11px] text-slate-500">Dangling high-tension line (Power)</p>
+                            <span class="inline-block text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded font-semibold mt-1">Severity 10 / P0 Critical</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grievance Ingestion Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Left Column: Upload & Live AI Scanner Card -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-slate-900 mb-1 flex items-center">
+                            <i class="fa-solid fa-camera-retro text-indigo-600 mr-2"></i>
+                            Capture or Upload Civic Hazard
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">
+                            Upload a photo from your phone/camera. CivicLens automatically performs computer vision diagnosis.
+                        </p>
+
+                        <!-- Upload Dropzone / Preview Area -->
+                        <div id="dropzone-area" class="relative border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-50 group overflow-hidden">
+                            <!-- Hidden File Input -->
+                            <input type="file" id="report-file-input" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                            
+                            <!-- Laser Scan Overlay (Animated when scanning) -->
+                            <div id="laser-scan" class="laser-scanner hidden">
+                                <div class="laser-beam"></div>
+                                <div class="laser-hud text-xs text-sky-300 font-mono">
+                                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> MULTIMODAL AI EXTRACTING DEFECT SIGNATURES...
+                                </div>
+                            </div>
+
+                            <!-- Empty State View -->
+                            <div id="upload-placeholder" class="py-8" onclick="document.getElementById('report-file-input').click()">
+                                <div class="w-16 h-16 rounded-full bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center text-2xl mb-3 group-hover:scale-110 transition">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                                </div>
+                                <p class="text-sm font-semibold text-slate-700">Click to upload photo or drag & drop</p>
+                                <p class="text-xs text-slate-400 mt-1">Supports JPG, PNG, WEBP from mobile cameras</p>
+                            </div>
+
+                            <!-- Preview View -->
+                            <div id="preview-container" class="hidden relative">
+                                <img id="image-preview" src="" class="w-full h-64 sm:h-80 object-cover rounded-lg shadow-inner" alt="Uploaded Issue">
+                                <button onclick="resetImageUpload(event)" class="absolute top-3 right-3 bg-slate-900/80 hover:bg-slate-900 text-white rounded-full w-8 h-8 flex items-center justify-center text-xs shadow-md transition">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                                <span class="absolute bottom-3 left-3 bg-slate-900/80 backdrop-blur-sm text-sky-400 text-xs px-2.5 py-1 rounded-md font-mono border border-sky-500/30">
+                                    <i class="fa-solid fa-microchip mr-1"></i> Ready for AI Triage
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Instant AI Triage Output Card -->
+                        <div id="ai-triage-card" class="mt-4 p-4 rounded-xl bg-slate-900 text-white shadow-md border border-slate-800 hidden">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Instant AI Diagnosis</span>
+                                </div>
+                                <span id="triage-engine-badge" class="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700 font-mono">
+                                    CivicLens Vision
+                                </span>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-3">
+                                <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                                    <p class="text-[10px] text-slate-400 uppercase">Hazard Class</p>
+                                    <p id="triage-hazard" class="text-xs font-bold text-sky-400 truncate">Pothole</p>
+                                </div>
+                                <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                                    <p class="text-[10px] text-slate-400 uppercase">Severity Score</p>
+                                    <p id="triage-severity" class="text-xs font-bold text-red-400">9 / 10</p>
+                                </div>
+                                <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                                    <p class="text-[10px] text-slate-400 uppercase">SLA Target</p>
+                                    <p id="triage-sla" class="text-xs font-bold text-amber-400">24 Hours</p>
+                                </div>
+                                <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700">
+                                    <p class="text-[10px] text-slate-400 uppercase">Confidence</p>
+                                    <p id="triage-confidence" class="text-xs font-bold text-emerald-400">94.2%</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-800/50 p-3 rounded-lg text-xs space-y-1.5 border border-slate-700/60">
+                                <p class="text-slate-300">
+                                    <span class="font-semibold text-slate-200">Autonomous Routing:</span> 
+                                    <span id="triage-dept" class="text-sky-300">Public Works Department (Roads & Bridges)</span>
+                                </p>
+                                <p class="text-slate-300">
+                                    <span class="font-semibold text-slate-200">Generated Work Order:</span> 
+                                    <span id="triage-workorder" class="text-slate-300 italic">Emergency bituminous cold-mix patch required. Barricading deployed.</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Location, Voice/Text Description, and Submit -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                        <h3 class="text-lg font-bold text-slate-900 mb-1 flex items-center">
+                            <i class="fa-solid fa-location-dot text-rose-600 mr-2"></i>
+                            Location & Ward Intelligence
+                        </h3>
+                        <p class="text-xs text-slate-500 mb-4">
+                            Automatic reverse-geocoding to municipal ward and smart proximity deduplication.
+                        </p>
+
+                        <form id="report-form" onsubmit="submitCitizenReport(event)" class="space-y-4">
+                            <!-- State, City & Ward Selectors (All 28 States & 8 UTs) -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">State / UT</label>
+                                    <select id="report-state" class="w-full text-xs rounded-lg border-slate-300 bg-slate-50 p-2.5 focus:ring-2 focus:ring-indigo-500" onchange="onStateSelected()">
+                                        <!-- Populated with all 36 States & UTs -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">City / District</label>
+                                    <select id="report-city" class="w-full text-xs rounded-lg border-slate-300 bg-slate-50 p-2.5 focus:ring-2 focus:ring-indigo-500" onchange="onCitySelected()">
+                                        <!-- Dynamically updated -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">Ward / Zone</label>
+                                    <select id="report-ward" class="w-full text-xs rounded-lg border-slate-300 bg-slate-50 p-2.5 focus:ring-2 focus:ring-indigo-500">
+                                        <!-- Dynamically updated -->
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Street Address / Landmark -->
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Street Address or Landmark</label>
+                                <input type="text" id="report-address" placeholder="e.g. Near Bellandur EcoSpace Service Road" class="w-full text-xs rounded-lg border-slate-300 bg-slate-50 p-2.5 focus:ring-2 focus:ring-indigo-500" required>
+                            </div>
+
+                            <!-- Coordinates (auto-filled or editable) -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] text-slate-500 mb-1">Latitude</label>
+                                    <input type="number" step="any" id="report-lat" value="12.9260" class="w-full text-xs rounded-lg border-slate-200 bg-slate-100 p-2 font-mono">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-slate-500 mb-1">Longitude</label>
+                                    <input type="number" step="any" id="report-lng" value="77.6762" class="w-full text-xs rounded-lg border-slate-200 bg-slate-100 p-2 font-mono">
+                                </div>
+                            </div>
+
+                            <!-- Verified Hazard Category (AI Auto-detected or Custom Override) -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-xs font-semibold text-slate-700">Verified Hazard Category</label>
+                                    <span class="text-[10px] text-emerald-600 font-semibold flex items-center">
+                                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> AI Auto-Assigned
+                                    </span>
+                                </div>
+                                <select id="report-hazard-override" class="w-full text-xs rounded-lg border-slate-300 bg-slate-50 p-2.5 focus:ring-2 focus:ring-indigo-500 font-semibold text-indigo-900">
+                                    <option value="Pothole & Road Damage">Pothole & Road Damage (PWD - 24-48h SLA)</option>
+                                    <option value="Garbage & Solid Waste">Garbage & Solid Waste (SWM - 12h SLA)</option>
+                                    <option value="Electrical & Live Wire">Electrical & Live Wire (Power Board - 4h SLA Critical)</option>
+                                    <option value="Waterlogging & Sewage">Waterlogging & Sewage (Jal Board - 18h SLA)</option>
+                                    <option value="Broken Footpath / Utility">Broken Footpath / Utility (PWD - 48h SLA)</option>
+                                </select>
+                            </div>
+
+                            <!-- Vernacular Audio / Text Grievance Description -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-xs font-semibold text-slate-700">Grievance Description (Multilingual)</label>
+                                    <button type="button" onclick="startVoiceInput()" class="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center space-x-1">
+                                        <i class="fa-solid fa-microphone"></i>
+                                        <span id="voice-btn-text">Voice Input (EN/HI/TA/TE)</span>
+                                    </button>
+                                </div>
+                                <textarea id="report-desc" rows="3" placeholder="Describe the hazard in English, Hindi, Tamil, Telugu... (e.g. 'Very deep pothole near junction, two-wheelers slipping in rain')" class="w-full text-xs rounded-lg border-slate-300 bg-slate-50 p-2.5 focus:ring-2 focus:ring-indigo-500"></textarea>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" id="submit-report-btn" class="w-full bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center space-x-2">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span>Submit Grievance to Municipal Triage</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Deduplication & Hotspot Guarantee Explainer -->
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-xs text-indigo-900 space-y-1">
+                        <div class="flex items-center space-x-2 font-bold text-indigo-950">
+                            <i class="fa-solid fa-shield-halved text-indigo-600"></i>
+                            <span>Autonomous 50m Proximity Clustering</span>
+                        </div>
+                        <p class="text-indigo-800/80 leading-relaxed">
+                            If another citizen reports within 50 meters of an active hazard, CivicLens clusters the tickets together and increments upvotes—elevating urgency without flooding municipal staff with duplicates.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 2: INTERACTIVE GIS WARD HEATMAP                           -->
+        <!-- ============================================================== -->
+        <section id="tab-map" class="tab-pane hidden">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center">
+                            <i class="fa-solid fa-map-location-dot text-sky-600 mr-2"></i>
+                            Geospatial Hazard Hotspot Map
+                        </h2>
+                        <p class="text-xs text-slate-500">Live GIS cluster pins color-coded by severity (Red: Critical, Orange: High, Green: Resolved)</p>
+                    </div>
+                    <!-- State Selector on Map -->
+                    <div class="flex items-center space-x-2">
+                        <label class="text-xs font-semibold text-slate-600">Fly to State / UT:</label>
+                        <select id="map-state-selector" onchange="panMapToState()" class="text-xs border rounded-lg px-3 py-1.5 bg-slate-50 max-w-[200px]">
+                            <!-- Populated with all 36 States & UTs -->
+                        </select>
+                        <button onclick="refreshMapData()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition">
+                            <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Leaflet Map Canvas -->
+                <div id="gis-map" class="w-full h-[520px] rounded-xl shadow-inner border border-slate-200 z-10"></div>
+
+                <!-- Map Legend -->
+                <div class="flex flex-wrap items-center justify-center gap-6 mt-4 text-xs font-medium text-slate-600">
+                    <span class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-red-600"></span>
+                        <span>Critical (P0 / Sev 9-10)</span>
+                    </span>
+                    <span class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+                        <span>High (P1 / Sev 7-8)</span>
+                    </span>
+                    <span class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                        <span>Medium (P2 / Sev 5-6)</span>
+                    </span>
+                    <span class="flex items-center space-x-1.5">
+                        <span class="w-3 h-3 rounded-full bg-emerald-600"></span>
+                        <span>Verified Resolved</span>
+                    </span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 3: MUNICIPAL COMMAND CENTER (TRIAGE & SLA QUEUE)          -->
+        <!-- ============================================================== -->
+        <section id="tab-municipal" class="tab-pane hidden">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center">
+                            <i class="fa-solid fa-layer-group text-indigo-600 mr-2"></i>
+                            Municipal Command Priority Triage Queue
+                        </h2>
+                        <p class="text-xs text-slate-500">Automated triage ranked by: (Severity × Upvote Multiplier) with real-time SLA countdowns across All Indian States</p>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="filter-state" onchange="loadReportsTable()" class="text-xs border rounded-lg px-2.5 py-1.5 bg-slate-50 max-w-[150px]">
+                            <option value="">All States / UTs</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                        <select id="filter-hazard" onchange="loadReportsTable()" class="text-xs border rounded-lg px-2.5 py-1.5 bg-slate-50">
+                            <option value="">All Hazards</option>
+                            <option value="Pothole & Road Damage">Potholes</option>
+                            <option value="Garbage & Solid Waste">Solid Waste</option>
+                            <option value="Electrical & Live Wire">Electrical / Wire</option>
+                            <option value="Waterlogging & Sewage">Water / Sewage</option>
+                        </select>
+                        <select id="filter-status" onchange="loadReportsTable()" class="text-xs border rounded-lg px-2.5 py-1.5 bg-slate-50">
+                            <option value="">All Statuses</option>
+                            <option value="Reported">Reported</option>
+                            <option value="Assigned">Assigned</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                        <input type="text" id="filter-search" oninput="loadReportsTable()" placeholder="Search address, ID..." class="text-xs border rounded-lg px-2.5 py-1.5 bg-slate-50 w-36">
+                    </div>
+                </div>
+
+                <!-- Incidents Data Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 uppercase font-bold tracking-wider">
+                            <tr>
+                                <th class="p-3">Ticket ID & Photo</th>
+                                <th class="p-3">Hazard & Details</th>
+                                <th class="p-3">Ward, City & State</th>
+                                <th class="p-3">Severity & Priority</th>
+                                <th class="p-3">Department & SLA</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incidents-table-body" class="divide-y divide-slate-100">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 4: MUNICIPAL WORKER FIELD RESOLUTION & GEOFENCE AUDIT    -->
+        <!-- ============================================================== -->
+        <section id="tab-contractor" class="tab-pane hidden">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="max-w-5xl mx-auto">
+                    <div class="text-center mb-6">
+                        <span class="inline-block bg-emerald-100 text-emerald-800 text-xs px-3 py-1 rounded-full font-bold mb-2">
+                            Standard Operating Procedure (SOP) • Anti-Ghost Resolution
+                        </span>
+                        <h2 class="text-2xl font-bold text-slate-900">
+                            Municipal Worker On-Site Verification Portal
+                        </h2>
+                        <p class="text-xs text-slate-500 max-w-2xl mx-auto mt-1">
+                            Field crews arriving at the grievance site must submit a live attendance selfie with GPS coordinates, followed by before-work defect confirmation and post-work completion proof with matching coordinates.
+                        </p>
+                    </div>
+
+                    <!-- Step 1: Select Active Ticket -->
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200 mb-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+                            <label class="text-xs font-bold text-slate-700 flex items-center">
+                                <i class="fa-solid fa-list-check text-indigo-600 mr-2"></i>
+                                Select Assigned Grievance Ticket:
+                            </label>
+                            <div class="flex items-center space-x-2">
+                                <select id="verify-status-filter" onchange="populateContractorTicketSelect()" class="text-xs border rounded-lg px-2.5 py-1 bg-white text-slate-700">
+                                    <option value="open">Pending Field Resolution (Assigned / In Progress)</option>
+                                    <option value="all">All Incidents (including Resolved)</option>
+                                </select>
+                                <button type="button" onclick="resetDemoTickets()" id="verify-reload-btn" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-lg font-medium transition flex items-center">
+                                    <i class="fa-solid fa-rotate-left mr-1"></i> Reload Open Tickets
+                                </button>
+                            </div>
+                        </div>
+                        <select id="verify-incident-select" onchange="loadIncidentForVerification()" class="w-full text-xs rounded-lg border-slate-300 bg-white p-2.5 shadow-sm font-medium">
+                            <!-- Populated dynamically by JS -->
+                        </select>
+                        <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-500 mt-2 px-1">
+                            <span id="verify-target-coords"><i class="fa-solid fa-map-pin text-red-500 mr-1"></i> Target Hazard GPS: 12.9260° N, 77.6762° E</span>
+                            <span id="verify-target-dept"><i class="fa-solid fa-building text-slate-400 mr-1"></i> Public Works Department (Roads & Bridges)</span>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================== -->
+                    <!-- STAGE 1: WORKER ARRIVAL & ON-SITE SELFIE WITH COORDINATES      -->
+                    <!-- ============================================================== -->
+                    <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl p-5 shadow-lg mb-6 border border-indigo-800/40">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2 mb-4">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-bold text-xs flex items-center justify-center">1</span>
+                                <h3 class="text-sm font-bold uppercase tracking-wider text-amber-300">Stage 1: Worker Arrival & On-Site Selfie (with Coordinates)</h3>
+                            </div>
+                            <span id="verify-geofence-badge" class="text-[11px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-3 py-1 rounded-full font-semibold">
+                                <i class="fa-solid fa-satellite-dish mr-1 text-emerald-400 animate-pulse"></i> Geofence Verified: 14.2m from hazard
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+                            <!-- Worker Selfie Display & Capture -->
+                            <div class="md:col-span-4 text-center">
+                                <div class="relative w-44 h-44 mx-auto rounded-2xl overflow-hidden border-2 border-amber-400/60 shadow-xl bg-slate-800 group">
+                                    <img id="verify-worker-selfie-img" src="/static/sample_images/worker_selfie_pothole.jpg" class="w-full h-full object-cover" alt="Worker Arrival Selfie">
+                                    <input type="file" id="verify-worker-selfie-file" accept="image/*" class="hidden" onchange="handleWorkerSelfieSelect(event)">
+                                    <div class="absolute bottom-0 inset-x-0 bg-black/70 backdrop-blur-sm p-1 text-[10px] text-amber-300 font-mono truncate">
+                                        <i class="fa-solid fa-camera mr-1"></i> <span id="verify-selfie-stamp">Arrival Selfie • 14-Oct-2026</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-center space-x-2 mt-2.5">
+                                    <button type="button" onclick="document.getElementById('verify-worker-selfie-file').click()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded-lg font-medium transition shadow-sm">
+                                        <i class="fa-solid fa-camera mr-1"></i> Take Selfie
+                                    </button>
+                                    <button type="button" onclick="loadMatchingWorkerSelfie()" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/40 px-2.5 py-1 rounded-lg font-medium transition">
+                                        <i class="fa-solid fa-user-check mr-1"></i> Sample Selfie
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Worker Credentials & Live Check-in GPS -->
+                            <div class="md:col-span-8 space-y-3 text-xs">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] text-slate-300 mb-1">Field Worker / Officer Name:</label>
+                                        <input type="text" id="verify-emp-name" value="Er. Rajesh Kumar" class="w-full text-xs rounded-lg bg-slate-800 border-slate-700 text-white px-3 py-1.5 focus:border-amber-400 font-medium">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] text-slate-300 mb-1">Employee / Lineman ID:</label>
+                                        <input type="text" id="verify-emp-id" value="BBMP-PWD-8492" class="w-full text-xs font-mono rounded-lg bg-slate-800 border-slate-700 text-amber-300 px-3 py-1.5 focus:border-amber-400">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[11px] text-slate-300 mb-1">Municipal Department:</label>
+                                    <select id="verify-emp-dept" class="w-full text-xs rounded-lg bg-slate-800 border-slate-700 text-white px-3 py-1.5 focus:border-amber-400">
+                                        <option value="Public Works Department (Roads & Bridges)">PWD (Roads & Bridges)</option>
+                                        <option value="Municipal Solid Waste Management">Municipal Solid Waste (SWM)</option>
+                                        <option value="Electricity Supply Company (Power & Safety)">DISCOM / Power Board</option>
+                                        <option value="Water Supply and Sewerage Board">Water & Sewerage Board</option>
+                                    </select>
+                                </div>
+
+                                <!-- Check-In Coordinates -->
+                                <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="text-[11px] font-bold text-amber-300 flex items-center">
+                                            <i class="fa-solid fa-location-crosshairs text-amber-400 mr-1.5"></i>
+                                            Arrival Check-In GPS Coordinates:
+                                        </span>
+                                        <button type="button" onclick="getCurrentDeviceGPS()" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-amber-300 px-2 py-0.5 rounded transition">
+                                            <i class="fa-solid fa-location-arrow mr-1"></i> Sync My GPS
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                            <label class="block text-[10px] text-slate-400">Latitude:</label>
+                                            <input type="number" step="0.0001" id="verify-checkin-lat" value="12.9260" class="w-full text-xs font-mono rounded bg-slate-900 border-slate-700 text-white px-2.5 py-1">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] text-slate-400">Longitude:</label>
+                                            <input type="number" step="0.0001" id="verify-checkin-lng" value="77.6762" class="w-full text-xs font-mono rounded bg-slate-900 border-slate-700 text-white px-2.5 py-1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================== -->
+                    <!-- STAGE 2: BEFORE & AFTER COMPLETION WORK WITH COORDINATES       -->
+                    <!-- ============================================================== -->
+                    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-6">
+                        <div class="flex items-center space-x-2 pb-3 border-b border-slate-100 mb-4">
+                            <span class="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">2</span>
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                                Stage 2: Completion of Work (Before & After Photos with Coordinates)
+                            </h3>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <!-- Before Image Card (Original Incident with Landmark & GPS) -->
+                            <div class="border rounded-xl p-3 bg-slate-50 text-center relative overflow-hidden">
+                                <span class="inline-block text-[11px] font-bold text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full mb-2">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Pre-Work Defect (Before)
+                                </span>
+                                <div class="w-full h-64 rounded-lg overflow-hidden bg-slate-200 flex items-center justify-center relative shadow-inner">
+                                    <img id="verify-before-img" src="/static/sample_images/pothole_before.jpg" class="w-full h-full object-cover" alt="Before Damage">
+                                    <div class="absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-sm text-white text-[10px] px-2.5 py-1 rounded text-left truncate border border-white/10 font-mono">
+                                        <i class="fa-solid fa-map-pin text-red-400 mr-1"></i>
+                                        <span id="verify-before-coords">GPS: 12.9260° N, 77.6762° E • Silk Board ORR</span>
+                                    </div>
+                                </div>
+                                <p id="verify-before-label" class="text-xs font-semibold text-slate-700 mt-2 truncate">Pothole on Outer Ring Road</p>
+                            </div>
+
+                            <!-- After Image Card (Work Completion Proof with GPS) -->
+                            <div class="border rounded-xl p-3 bg-slate-50 text-center relative overflow-hidden">
+                                <span class="inline-block text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full mb-2">
+                                    <i class="fa-solid fa-circle-check mr-1"></i> Work Completion Proof (After)
+                                </span>
+                                <div class="w-full h-64 rounded-lg overflow-hidden bg-slate-200 flex items-center justify-center relative shadow-inner">
+                                    <img id="verify-after-img" src="/static/sample_images/pothole_after.jpg" class="w-full h-full object-cover" alt="After Repair">
+                                    <input type="file" id="verify-after-file" accept="image/*" class="hidden" onchange="handleVerificationFileSelect(event)">
+                                    <div class="absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-sm text-emerald-300 text-[10px] px-2.5 py-1 rounded text-left border border-emerald-500/40 truncate font-mono">
+                                        <i class="fa-solid fa-shield-halved text-emerald-400 mr-1"></i>
+                                        <span id="verify-after-coords">GPS: 12.9260° N, 77.6762° E • Work Completed On-Site</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-center space-x-2 mt-2">
+                                    <button type="button" onclick="document.getElementById('verify-after-file').click()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 py-1 rounded font-medium transition">
+                                        <i class="fa-solid fa-camera mr-1"></i> Upload Live Photo
+                                    </button>
+                                    <button type="button" onclick="loadMatchingSampleAfter()" class="text-xs bg-sky-100 hover:bg-sky-200 text-sky-800 px-3 py-1 rounded font-medium transition">
+                                        <i class="fa-solid fa-id-badge mr-1"></i> Use Completion Proof
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================== -->
+                    <!-- STAGE 3: AI TRI-FACTOR AUDIT & SUBMIT RESOLUTION               -->
+                    <!-- ============================================================== -->
+                    <div class="text-center mb-6">
+                        <button onclick="runAIVerification()" id="run-verify-btn" class="bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 hover:from-emerald-700 hover:to-indigo-800 text-white font-bold py-3.5 px-8 rounded-xl shadow-xl transition flex items-center justify-center space-x-2 mx-auto">
+                            <i class="fa-solid fa-fingerprint text-lg"></i>
+                            <span>Submit Work Completion & Run AI Tri-Factor Audit</span>
+                        </button>
+                        <p class="text-[11px] text-slate-400 mt-2">
+                            Audits: (1) Worker Attendance & Uniform • (2) GPS Geofence Proximity $\le 50$m • (3) Quantitative Surface Clearance
+                        </p>
+                    </div>
+
+                    <!-- Official Verification Certificate Output -->
+                    <div id="verify-result-card" class="hidden border border-emerald-500/40 rounded-2xl p-6 bg-slate-900 text-white shadow-2xl">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 mb-4 gap-3">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center">
+                                    <i id="verify-icon" class="fa-solid fa-circle-check text-emerald-400 text-2xl"></i>
+                                </div>
+                                <div>
+                                    <p id="verify-title" class="font-bold text-base text-emerald-400">Official Municipal Work Completion Certificate</p>
+                                    <p class="text-[11px] text-slate-400">Digital Resolution Audit • Verified by CivicLens AI Multimodal Engine</p>
+                                </div>
+                            </div>
+                            <div class="text-right bg-slate-800 px-4 py-2 rounded-xl border border-slate-700">
+                                <span class="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">AI Clearance Score</span>
+                                <span id="verify-score" class="text-2xl font-mono font-bold text-emerald-400">96.5%</span>
+                            </div>
+                        </div>
+
+                        <!-- 3-Photo Evidence Gallery -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                            <div class="bg-slate-800 p-2 rounded-xl border border-slate-700 text-center">
+                                <span class="text-[10px] text-amber-300 font-bold block mb-1">1. Worker Arrival Selfie</span>
+                                <img id="cert-selfie-img" src="/static/sample_images/worker_selfie_pothole.jpg" class="w-full h-28 object-cover rounded-lg mb-1">
+                                <span id="cert-worker-info" class="text-[10px] text-slate-300 block truncate">Er. Rajesh Kumar [BBMP-PWD-8492]</span>
+                            </div>
+                            <div class="bg-slate-800 p-2 rounded-xl border border-slate-700 text-center">
+                                <span class="text-[10px] text-red-400 font-bold block mb-1">2. Before-Work Defect</span>
+                                <img id="cert-before-img" src="/static/sample_images/pothole_before.jpg" class="w-full h-28 object-cover rounded-lg mb-1">
+                                <span id="cert-before-info" class="text-[10px] text-slate-300 block truncate">Initial Crater Verified</span>
+                            </div>
+                            <div class="bg-slate-800 p-2 rounded-xl border border-slate-700 text-center">
+                                <span class="text-[10px] text-emerald-400 font-bold block mb-1">3. After-Work Completion</span>
+                                <img id="cert-after-img" src="/static/sample_images/pothole_after.jpg" class="w-full h-28 object-cover rounded-lg mb-1">
+                                <span id="cert-after-info" class="text-[10px] text-slate-300 block truncate">Paved & Compacted Flush</span>
+                            </div>
+                        </div>
+
+                        <!-- Tri-Factor Audit Checklist -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs mb-4">
+                            <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700 flex items-center space-x-2">
+                                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                                <div>
+                                    <span class="font-bold text-slate-200 block text-[11px]">Worker Attendance:</span>
+                                    <span id="cert-worker-gear" class="text-emerald-300 text-[10px]">High-Vis Vest & Helmet Verified</span>
+                                </div>
+                            </div>
+                            <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700 flex items-center space-x-2">
+                                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                                <div>
+                                    <span class="font-bold text-slate-200 block text-[11px]">GPS Geofence:</span>
+                                    <span id="cert-geofence" class="text-emerald-300 text-[10px]">On-Site (14.2m from hazard)</span>
+                                </div>
+                            </div>
+                            <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700 flex items-center space-x-2">
+                                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                                <div>
+                                    <span class="font-bold text-slate-200 block text-[11px]">Defect Remediation:</span>
+                                    <span id="cert-remediation" class="text-emerald-300 text-[10px]">Surface Flush Restored</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-800/80 p-3 rounded-lg text-xs space-y-1.5 border border-slate-700">
+                            <p class="text-slate-300">
+                                <span class="font-semibold text-slate-200">Municipal Audit Remarks:</span>
+                                <span id="verify-remarks" class="text-emerald-300">Asphalt patch leveled. Pothole defect eliminated.</span>
+                            </p>
+                            <div class="flex items-center justify-between text-slate-400 text-[11px] pt-1 border-t border-slate-700">
+                                <span><i class="fa-solid fa-lock mr-1 text-emerald-400"></i> Immutable Audit Hash: <span id="cert-hash" class="font-mono text-amber-300">CIVIC-7F8D-92A1-AUTH</span></span>
+                                <span class="text-emerald-400 font-semibold"><i class="fa-solid fa-check-double mr-1"></i> Database Status: RESOLVED</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Verification Audit Report Output -->
+                    <div id="verify-result-card" class="hidden border rounded-xl p-5 bg-slate-900 text-white shadow-xl">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                            <div class="flex items-center space-x-2">
+                                <i id="verify-icon" class="fa-solid fa-circle-check text-emerald-400 text-2xl"></i>
+                                <div>
+                                    <p id="verify-title" class="font-bold text-sm text-emerald-400">AI Verification Passed: Defect Remediated</p>
+                                    <p class="text-[11px] text-slate-400">Quantitative Computer Vision Clearance Audit</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] text-slate-400 block">Clearance Score</span>
+                                <span id="verify-score" class="text-xl font-mono font-bold text-emerald-400">94.5%</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-800/80 p-3 rounded-lg text-xs space-y-1.5 border border-slate-700 mb-4">
+                            <p class="text-slate-300">
+                                <span class="font-semibold text-slate-200">Audit Remarks:</span>
+                                <span id="verify-remarks" class="text-emerald-300">Smooth asphalt patch leveling verified. Crater filled to road grade.</span>
+                            </p>
+                            <p class="text-slate-400 text-[11px]">
+                                <i class="fa-solid fa-lock mr-1"></i> Status automatically transitioned to <strong>RESOLVED</strong> in municipal database. Citizen notified.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- TAB 5: CIVIC HEALTH INDEX (CHI) & ANALYTICS                   -->
+        <!-- ============================================================== -->
+        <section id="tab-analytics" class="tab-pane hidden">
+            <!-- Stat Cards Row -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                    <p class="text-xs font-medium text-slate-500 uppercase">Total Logged Incidents</p>
+                    <p id="stat-total" class="text-2xl font-extrabold text-slate-900 mt-1">--</p>
+                    <span class="text-[11px] text-sky-600 font-medium">Across 5 Indian Metros</span>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                    <p class="text-xs font-medium text-slate-500 uppercase">Verified Resolved</p>
+                    <p id="stat-resolved" class="text-2xl font-extrabold text-emerald-600 mt-1">--</p>
+                    <span id="stat-rate" class="text-[11px] text-emerald-700 font-medium">--% Resolution Rate</span>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                    <p class="text-xs font-medium text-slate-500 uppercase">Active Critical (P0)</p>
+                    <p id="stat-critical" class="text-2xl font-extrabold text-red-600 mt-1">--</p>
+                    <span class="text-[11px] text-red-600 font-medium">Under 24hr SLA Watch</span>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                    <p class="text-xs font-medium text-slate-500 uppercase">Avg Verification Score</p>
+                    <p id="stat-avg-score" class="text-2xl font-extrabold text-indigo-600 mt-1">--%</p>
+                    <span class="text-[11px] text-indigo-600 font-medium">Automated Computer Vision</span>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
+                        <i class="fa-solid fa-chart-pie text-sky-600 mr-2"></i>
+                        Civic Hazard Distribution
+                    </h3>
+                    <div class="h-64 flex items-center justify-center">
+                        <canvas id="chart-hazards"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center">
+                        <i class="fa-solid fa-city text-indigo-600 mr-2"></i>
+                        City Incident Distribution
+                    </h3>
+                    <div class="h-64 flex items-center justify-center">
+                        <canvas id="chart-cities"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ward Civic Health Index (CHI) Leaderboard -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900 flex items-center">
+                            <i class="fa-solid fa-award text-amber-500 mr-2"></i>
+                            Ward Civic Health Index (CHI) Scorecard
+                        </h3>
+                        <p class="text-xs text-slate-500">Algorithmic community wellness ranking: penalizes unresolved critical hazards and rewards rapid verified repairs.</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-100 text-slate-700 uppercase font-bold">
+                            <tr>
+                                <th class="p-3">Ward Name</th>
+                                <th class="p-3">Total Issues</th>
+                                <th class="p-3">Resolved</th>
+                                <th class="p-3">Active Critical</th>
+                                <th class="p-3">CHI Score (0-100)</th>
+                                <th class="p-3">Health Grade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ward-leaderboard-body" class="divide-y divide-slate-100">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FLOATING NAGRIK AI ASSISTANT CHAT MODAL -->
+    <div id="chat-modal" class="fixed bottom-6 right-6 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 hidden flex flex-col transition-all">
+        <div class="bg-slate-900 text-white p-3.5 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-bold leading-tight">Nagrik AI Copilot</p>
+                    <p class="text-[10px] text-slate-400">Civic Rights & Helpline Assistant</p>
+                </div>
+            </div>
+            <button onclick="toggleChatModal()" class="text-slate-400 hover:text-white text-xs">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+
+        <div id="chat-messages" class="p-3 h-72 overflow-y-auto space-y-3 bg-slate-50 text-xs">
+            <div class="chat-bubble bg-indigo-100 text-indigo-900 p-2.5 rounded-xl rounded-tl-none max-w-[85%]">
+                Namaste! I am your CivicLens AI Assistant. How can I help you today? You can ask me how to report a pothole, track a grievance, or find municipal emergency numbers.
+            </div>
+        </div>
+
+        <form id="chat-form" onsubmit="sendChatMessage(event)" class="p-2.5 bg-white border-t border-slate-200 flex space-x-2">
+            <input type="text" id="chat-input" placeholder="Type a question..." class="flex-grow text-xs border border-slate-300 rounded-lg px-3 py-2 focus:ring-1 focus:ring-indigo-500">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-xs">
+                <i class="fa-solid fa-paper-plane"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-900 text-slate-400 py-6 text-xs border-t border-slate-800 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center sm:flex sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+            <p><strong>CivicLens AI (NagrikNetra)</strong> &bull; Community AI Innovation Challenge Project</p>
+            <p class="text-slate-500">Dual-Mode Architecture: Google Gemini Vision + Deterministic Edge Vision Heuristics</p>
+        </div>
+    </footer>
+
+    <!-- App Scripts -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
